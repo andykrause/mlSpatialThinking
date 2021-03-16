@@ -1,0 +1,138 @@
+#***************************************************************************************************
+#*
+#*  Prepare Data for ValTech Conference Examples
+#*
+#***************************************************************************************************
+
+ ## Load Libraries
+  library(kingCoData) #devools::install_github('www.github.com/andykrause/kingCoData')
+  library(sf)
+  library(tidyverse)
+
+### Sales and Assesssment data (from kingCoData package) -------------------------------------------
+
+  data(kingco_sales)
+
+  # Filter by year to just 2019
+  king_df <- kingco_sales %>%
+    dplyr::filter(sale_date >= as.Date('2019-01-01'))
+
+  # Remove some outliers
+  king_df <- king_df %>%
+    dplyr::filter(imp_val > 1000 &
+                    land_val > 0 &
+                    sqft > 400 &
+                    sqft < 8000 &
+                    sqft_lot > 1000 &
+                    sqft_lot < 43560 &
+                    beds > 0)
+
+  # Create new features
+  king_df <- king_df %>%
+    dplyr::mutate(view_score = view_rainier + view_olympics + view_cascades + view_sound + view_skyline) %>%
+    dplyr::mutate(baths = bath_full + (.75 * bath_3qtr) + (.5 * bath_half)) %>%
+    dplyr::mutate(wfnt = ifelse(wfnt == 0, 0, 1)) %>%
+    dplyr::mutate(sale_month = as.factor(substr(sale_date, 1, 7)))
+
+  # Convert to a simple features object
+  king_sf <- king_df %>%
+    sf::st_as_sf(., coords = c('longitude', 'latitude'),
+                 remove = FALSE)
+
+  # Add the correct CRS
+  sf::st_crs(king_sf) <- 4269
+
+### Spatial Data -----------------------------------------------------------------------------------
+
+ ## Load Data
+
+  # Get Study Area
+  studyarea_sf <-  sf::st_read(file.path(getwd(), 'data', 'urban_kingco.shp')) %>%
+    sf::st_transform(4269) %>%
+    dplyr::select(studyarea = OBJECTID)
+
+  # Get Municipal Boundaries
+  munis_sf <-  sf::st_read(file.path(getwd(), 'data', 'kingco_muni_boundaries',
+                                     'kingco_muni_boundaries.shp')) %>%
+    sf::st_transform(4269)
+
+  # Get Census Tract Boundaries
+  tract_sf <-  sf::st_read(file.path(getwd(), 'data', 'kingco_tract_boundaries',
+                                     'kingco_tract_boundaries.shp')) %>%
+    sf::st_transform(4269) %>%
+    dplyr::select(tract_id = GEO_ID_TRT)
+
+  # Get Zip code boundaries
+  zip_sf <-  sf::st_read(file.path(getwd(), 'data', 'kingco_zipcode_boundaries',
+                                     'kingco_zipcode_boundaries.shp')) %>%
+    sf::st_transform(4269) %>%
+    dplyr::select(zip_code = ZIP)
+
+  ## Join and Clip
+
+  # Limit King to those in study area
+  king_sf <- king_sf %>%
+    sf::st_join(., studyarea_sf, join = st_within) %>%
+    dplyr::filter(!is.na(studyarea)) %>%
+    dplyr::select(-studyarea)
+
+  # Add ZIP Codes
+  king_sf <- king_sf %>%
+    sf::st_join(., zip_sf)
+
+  # Add Census ID
+  king_sf <- king_sf %>%
+    sf::st_join(., tract_sf)
+
+### Create Simulation Grid -------------------------------------------------------------------------
+
+  # Get bounds
+  xlim = c(min(king_sf$longitude), max(king_sf$longitude))
+  ylim = c(min(king_sf$latitude), max(king_sf$latitude))
+  xrange = seq(xlim[1], xlim[2], length.out = 100)
+  yrange = seq(ylim[1], ylim[2], length.out = 100)
+
+  xy.grid = expand.grid(xrange, yrange)
+  xy_sf <- data.frame(id = 1:nrow(xy.grid),
+                      longitude = xy.grid$Var1,
+                      latitude = xy.grid$Var2) %>%
+    sf::st_as_sf(., coords = c('longitude', 'latitude'),
+                 remove = FALSE)
+  sf::st_crs(xy_sf) <- 4269
+
+  xy_sf <- xy_sf %>%
+    sf::st_join(., studyarea_sf, join = st_within) %>%
+    dplyr::filter(!is.na(studyarea)) %>%
+    dplyr::select(-studyarea)
+
+  # Add ZIP Codes
+  xy_sf <- xy_sf %>%
+    sf::st_join(., zip_sf)
+
+  # Add Census ID
+  xy_sf <- xy_sf %>%
+    sf::st_join(., tract_sf)
+
+  ## Limit to 'urban residential' areas
+
+  res_df <- king_df %>% dplyr::select(longitude, latitude)
+  xy_df <- xy_sf %>% dplyr::select(longitude, latitude) %>%
+    sf::st_drop_geometry()
+
+  nn = RANN::nn2(res_df, query = xy_df, k = 5)
+  nn_df <- as.data.frame(nn$nn.dists) %>%
+    dplyr::mutate(id = 1:nrow(.)) %>%
+    tidyr::pivot_longer(., -c('id'), values_to = 'dist', names_to = 'nn') %>%
+    dplyr::group_by(id) %>%
+    dplyr::summarize(mean_dist = mean(dist))
+
+  sim_sf <- xy_sf[nn_df$id[nn_df$mean_dist <= quantile(nn_df$mean_dist, .75)], ]
+
+### Save to RDS Objects
+
+  saveRDS(list(sales = king_sf,
+               sim = sim_sf,
+               muni = munis_sf,
+               tract = tract_sf,
+               zip = zip_sf),
+          file.path(getwd(), 'data', 'studydata.rds'))

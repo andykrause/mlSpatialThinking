@@ -1,0 +1,52 @@
+---
+title: "Overview"
+author: "Andy Krause"
+date: "3/5/2021"
+output: html_document
+---
+
+## To do list
+
+# Get Data
+
+# Plot Errors, show SPAC
+  - RF Model
+  - Zip Code Model
+  
+  
+ Location value map
+With Assessment Areas
+With RF Lat/Long
+ Interpretability
+Map of values by each, show ML is interpretable
+Map of value of extra bedroom
+PDP of value of sqft (at four different spots on the map)
+Uncertainty
+Map of RIQR for example home over space (any prediction set)
+Fairness
+Compare errors in boundary zones (Zip Codes)
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
