@@ -13,15 +13,17 @@
  library(patchwork)
  library(tmap)
 
- # useful on MacOS to speed up rendering of geom_sf() objects
- # if(!identical(getOption("bitmapType"), "cairo") && isTRUE(capabilities()[["cairo"]])){
- #    options(bitmapType = "cairo")
- # }
-
  data_ <- readRDS(file.path(getwd(), 'data', 'studydata.rds'))
  source(file.path(getwd(), 'R', 'functions.R'))
 
- bs = 16
+ bs = 26
+
+ prim_color <- 'goldenrod1'
+ sec_color <- 'khaki'
+
+ #prim_color <- 'navy'
+ #sec_color <- 'royalblue'
+
 ### Data Prep --------------------------------------------------------------------------------------
 
   sales_df <- data_$sales %>%
@@ -48,7 +50,6 @@
                                longitude,
                             data = train_df,  importance = 'impurity')
 
-
 ### ...Non Spatial Inter ---------------------------------------------------------------------------
 
   varimp_df <- data.frame(feat = names(mod_srf$variable.importance),
@@ -59,20 +60,20 @@
                      'Grade/Quality', 'Condition', 'Beds', 'Baths'))
 
   ggplot() +
-     geom_bar(data = varimp_df, aes(feat, imp), fill = 'royalblue', stat = 'identity') +
+     geom_bar(data = varimp_df, aes(feat, imp),
+              fill = prim_color, stat = 'identity') +
      xlab('\n\nProperty Features\n') +
      ylab('\nRelative Measure of Importance') +
      labs(title = 'Perturbation Feature Importance',
           subtitle = 'An Example with King County, WA Data') +
      scale_y_continuous(breaks = c(400, 1300), labels = c('Low', 'High')) +
      coord_flip() +
-     theme_vtc(base_size =  bs) ->
+     theme_vtcdark(base_size =  bs) ->
      varimp_plot
+  varimp_plot
 
-  png(filename = file.path(getwd(), 'plots', 'varimp_plot.png'),
-      width = 800, height = 500)
-   varimp_plot
-  dev.off()
+  ggsave(file.path(getwd(), 'plots', 'varimp_plot_dark.png'), varimp_plot, bg = "transparent")
+
 
 
 
@@ -98,24 +99,21 @@
 
   ggplot() +
      geom_line(data = yb_ice,
-               aes(x = year_built, y = index, group = yhat.id), color = 'royalblue', alpha = .9,
+               aes(x = year_built, y = index, group = yhat.id), color = sec_color, alpha = .9,
                size = .1) +
      geom_line(data = yb_pdp,
-               aes(x = year_built, y = index), color = 'navy', size = 1.2) +
+               aes(x = year_built, y = index), color = prim_color, size = 1.2) +
      ylab('Impact on Value\nChange from Built Year of 1900\n') +
      xlab('\n Year Built') +
      scale_y_continuous(breaks = seq(60, 110, 10),
                         labels = c('-40%', '-30%', '-20%', '-10%', 'Even', '+10%')) +
      labs(title = 'Partial Dependence Plot',
           subtitle = 'Effect of Vintage on Value') +
-    theme_vtc(base_size = bs) ->
+    theme_vtcdark(base_size = bs) ->
+     yb_pdp_plot
      yb_pdp_plot
 
-  png(filename = file.path(getwd(), 'plots', 'yb_pdp.png'),
-      width = 800, height = 500)
-    yb_pdp_plot
-  dev.off()
-
+  ggsave(file.path(getwd(), 'plots', 'yb_pdp__plot_dark.png'), yb_pdp_plot, bg = "transparent")
 
   sf_ice <- pdp::partial(object = mod_srf,
                          train = sim_df,
@@ -130,25 +128,23 @@
      dplyr::summarize(index = median(index))
 
   ggplot() +
-     geom_line(data = sf_ice,
-               aes(x = sqft, y = index, group = yhat.id), color = 'royalblue', alpha = .9,
-               size = .1) +
-     geom_line(data = sf_pdp,
-               aes(x = sqft, y = index), color = 'navy', size = 1.2) +
-     ylab('Impact on Value\nChange in Square Footab\n') +
-     xlab('\n Home Size in SqFt') +
-     scale_y_continuous(breaks = seq(100, 150, 10),
-                        labels = c('Even', '+10%', '+20%', '+30%', '+40%', '+50%')) +
-     labs(title = 'Partial Dependence Plot',
-          subtitle = 'Effect of Home Size on Value') +
-     coord_cartesian(ylim = c(95, 155) ) +
-    theme_vtc(base_size = bs) ->
-     sf_pdp_plot
+    geom_line(data = sf_ice,
+              aes(x = sqft, y = index, group = yhat.id), color = sec_color, alpha = .5,
+              size = .1) +
+    geom_line(data = sf_pdp,
+              aes(x = sqft, y = index), color = prim_color, size = 1.2) +
+    ylab('Impact on Value\nChange in Square Footage\n') +
+    xlab('\n Home Size in SqFt') +
+    scale_y_continuous(breaks = seq(100, 160, 10),
+                       labels = c('Even', '+10%', '+20%', '+30%', '+40%', '+50%', '+60%')) +
+    labs(title = 'Partial Dependence Plot',
+         subtitle = 'Effect of Home Size on Value') +
+    coord_cartesian(ylim = c(95, 155), xlim = c(500, 4750)) +
+    theme_vtcdark(base_size = bs+10)  ->
+    sf_pdp_dplot
+    sf_pdp_dplot
 
-  png(filename = file.path(getwd(), 'plots', 'sf_pdp.png'),
-      width = 800, height = 500)
-  sf_pdp_plot
-  dev.off()
+    ggsave(file.path(getwd(), 'plots', 'sf_pdp_plot_dark.png'), sf_pdp_dplot, bg = "transparent")
 
 ### ...Spatial Interpretability -------------------------------------------------------------------
 
@@ -200,27 +196,54 @@
       dplyr::mutate(sfdiff = cut(sf_diff, quantile(sf_diff, seq(0, 1, by = .1))),
                     sffct = as.factor(sfdiff))
 
+  ## Make Legend
+  tmap_mode('plot')
+  tm_shape(simxy_sf %>% tidyr::drop_na(sffct), alpha = .95) +
+    #tm_layout (frame = FALSE, bg.color = "transparent", legend.show=FALSE) +
+    tm_layout (frame = FALSE, bg.color = "transparent",
+               legend.outside = TRUE, legend.text.color = 'gray90') +
+    tm_symbols(col='sffct', border.alpha = 0, shape = 16, title.col = '',
+               alpha = .95, size = .2, palette = c('goldenrod', 'royalblue'),
+               labels = c('  1st Decile (Lowest)', '  2nd Decile', '  3rd Decile',
+                          '  4th Decile', '  5th Decile', '  6th Decile', '  7th Decile',
+                          '  8th Decile', '  9th Decile', '  10th Decile (Highest)')) ->
+    pdp_legend
+    pdp_legend
 
-  tmap_mode("view")
-  tm_shape(simxy_sf %>% tidyr::drop_na(sffct), alpha = .8) +
-  tm_symbols(col='sffct', border.alpha = 0, shape = 16, title.col = 'Price Change for +100sf',
-             alpha = .5, size = .1, palette = c('goldenrod', 'blue'),
-             labels = c('1st Decile (Lowest)', '2nd Decile', '3rd Decile',
-                        '4th Decile', '5th Decile', '6th Decile', '7th Decile',
-                        '8th Decile', '9th Decile', '10th Decile (Highest)'))
+  tmap_save(pdp_legend,
+            filename = file.path(getwd(), 'plots', 'pdp_legend.png'),
+            bg="transparent")
 
-  ## Create Plot
+  ## Sf Plot (simple XY)
+  tmap_mode('plot')
+  tm_shape(simxy_sf %>% tidyr::drop_na(sffct), alpha = .95) +
+    tm_layout (frame = FALSE, bg.color = "transparent", legend.show=FALSE) +
+    tm_symbols(col='sffct', border.alpha = 0, shape = 16, title.col = 'Price Change for +100sf',
+               alpha = .95, size = .2, palette = c('goldenrod', 'royalblue')) ->
+    sf_pdp_map
+    sf_pdp_map
+
+  tmap_save(sf_pdp_map,
+            filename = file.path(getwd(), 'plots', 'sfmap1.png'),
+            bg="transparent")
+
+  ## Year Built Plot
   simxy_sf <-
     simxy_sf %>%
     dplyr::mutate(ybdiff = cut(yb_diff, quantile(yb_diff, seq(0, 1, by = .1))),
                   ybfct = as.factor(ybdiff))
 
-  tm_shape(simxy_sf %>% tidyr::drop_na(ybfct), alpha = .8) +
-    tm_symbols(col='ybfct', border.alpha = 0, shape = 16, title.col = 'Price Change for -30 Home Age',
-               alpha = .5, size = .1, palette = c('goldenrod', 'blue'),
-               labels = c('1st Decile (Lowest)', '2nd Decile', '3rd Decile',
-                          '4th Decile', '5th Decile', '6th Decile', '7th Decile',
-                          '8th Decile', '9th Decile', '10th Decile (Highest)'))
+  tmap_mode('plot')
+  tm_shape(simxy_sf %>% tidyr::drop_na(ybfct), alpha = .95) +
+    tm_layout (frame = FALSE, bg.color = "transparent", legend.show=FALSE) +
+    tm_symbols(col='ybfct', border.alpha = 0, shape = 16, title.col = 'Price Change for +30Yr',
+               alpha = .95, size = .2, palette = c('goldenrod', 'royalblue')) ->
+    yb_pdp_map
+    yb_pdp_map
+
+    tmap_save(yb_pdp_map,
+              filename = file.path(getwd(), 'plots', 'ybmap1.png'),
+              bg="transparent")
 
  ## Add rotations
 
@@ -250,14 +273,18 @@
     dplyr::mutate(rsfdiff = cut(rsf_diff, quantile(rsf_diff, seq(0, 1, by = .1))),
                   rsffct = as.factor(rsfdiff))
 
-
-  tmap_mode("view")
-  tm_shape(simxy_sf %>% tidyr::drop_na(rsffct), alpha = .8) +
+  tmap_mode('plot')
+  tm_shape(simxy_sf %>% tidyr::drop_na(rsffct), alpha = .95) +
+    tm_layout (frame = FALSE, bg.color = "transparent", legend.show=FALSE) +
     tm_symbols(col='rsffct', border.alpha = 0, shape = 16, title.col = 'Price Change for +100sf',
-               alpha = .5, size = .1, palette = c('goldenrod', 'blue'),
-               labels = c('1st Decile (Lowest)', '2nd Decile', '3rd Decile',
-                          '4th Decile', '5th Decile', '6th Decile', '7th Decile',
-                          '8th Decile', '9th Decile', '10th Decile (Highest)'))
+               alpha = .95, size = .2, palette = c('goldenrod', 'royalblue')) ->
+    sf_pdp_map2
+  sf_pdp_map2
+
+  tmap_save(sf_pdp_map2,
+            filename = file.path(getwd(), 'plots', 'sfmap2.png'),
+            bg="transparent")
+
 
   ## Create Plot
   simxy_sf <-
@@ -265,12 +292,17 @@
     dplyr::mutate(rybdiff = cut(ryb_diff, quantile(ryb_diff, seq(0, 1, by = .1))),
                   rybfct = as.factor(rybdiff))
 
-  tm_shape(simxy_sf %>% tidyr::drop_na(rybfct), alpha = .8) +
-    tm_symbols(col='rybfct', border.alpha = 0, shape = 16, title.col = 'Price Change for -30 Home Age',
-               alpha = .5, size = .1, palette = c('goldenrod', 'blue'),
-               labels = c('1st Decile (Lowest)', '2nd Decile', '3rd Decile',
-                          '4th Decile', '5th Decile', '6th Decile', '7th Decile',
-                          '8th Decile', '9th Decile', '10th Decile (Highest)'))
+  tmap_mode('plot')
+  tm_shape(simxy_sf %>% tidyr::drop_na(rybfct), alpha = .95) +
+    tm_layout (frame = FALSE, bg.color = "transparent", legend.show=FALSE) +
+    tm_symbols(col='rybfct', border.alpha = 0, shape = 16, title.col = 'Price Change for +100sf',
+               alpha = .95, size = .2, palette = c('goldenrod', 'royalblue')) ->
+    yb_pdp_map2
+  yb_pdp_map2
+
+  tmap_save(yb_pdp_map2,
+            filename = file.path(getwd(), 'plots', 'ybmap2.png'),
+            bg="transparent")
 
 ### Uncertainty ------------------------------------------------------------------------------------
 
@@ -294,13 +326,35 @@
     dplyr::mutate(rf_riqr = unc_pred$riqr) %>%
     dplyr::mutate(rfriqr = cut(rf_riqr, quantile(rf_riqr, seq(0, 1, by = .1))))
 
-  tm_shape(simxy_sf %>% tidyr::drop_na(rfriqr), alpha = .8) +
-    tm_symbols(col='rfriqr', border.alpha = 0, shape = 16,
-               title.col = 'Valuation Uncertainty',
-               alpha = .6, size = .1, palette = c('gray20', 'royalblue'),
-               labels = c('1st Decile (Lowest)', '2nd Decile', '3rd Decile',
-                          '4th Decile', '5th Decile', '6th Decile', '7th Decile',
-                          '8th Decile', '9th Decile', '10th Decile (Highest)'))
+  tmap_mode('plot')
+  tm_shape(simxy_sf %>% tidyr::drop_na(rfriqr), alpha = .95) +
+    #tm_layout (frame = FALSE, bg.color = "transparent", legend.show=FALSE) +
+    tm_layout (frame = FALSE, bg.color = "transparent",
+               legend.outside = TRUE, legend.text.color = 'gray90') +
+    tm_symbols(col='rfriqr', border.alpha = 0, shape = 16, title.col = '',
+               alpha = .95, size = .2, palette = c('royalblue', 'white'),
+               labels = c('  1st Decile (Lowest)', '  2nd Decile', '  3rd Decile',
+                          '  4th Decile', '  5th Decile', '  6th Decile', '  7th Decile',
+                          '  8th Decile', '  9th Decile', '  10th Decile (Highest)')) ->
+    unc_legend
+    unc_legend
+
+  tmap_save(unc_legend,
+            filename = file.path(getwd(), 'plots', 'unc_legend.png'),
+            bg="transparent")
+
+  ### Unc plot
+  tmap_mode('plot')
+  tm_shape(simxy_sf %>% tidyr::drop_na(rfriqr), alpha = .95) +
+    tm_layout (frame = FALSE, bg.color = "transparent", legend.show=FALSE) +
+    tm_symbols(col='rfriqr', border.alpha = 0, shape = 16, title.col = '',
+               alpha = .95, size = .2, palette = c('royalblue', 'white')) ->
+    unc_map1
+    unc_map1
+
+  tmap_save(unc_map1,
+            filename = file.path(getwd(), 'plots', 'uncmap1.png'),
+            bg="transparent")
 
 ### Fairness ---------------------------------------------------------------------------------------
 
@@ -335,10 +389,23 @@ test_sf <- test_df %>%
   tm_shape(test_sf, alpha = .8) +
     tm_symbols(col='border_5', border.alpha = 0, shape = 16,
                title.col = 'Boundary Property',
-               alpha = .6, size = .1, palette = c('gray20', 'red'))
+               alpha = .6, size = .1, palette = c('gray20', 'blue3'))
 
 
+  tmap_mode('plot')
+  tm_shape(test_sf, alpha = .95) +
+    tm_layout (frame = FALSE, bg.color = "transparent", legend.show=TRUE,
+               legend.outside = TRUE, legend.text.color = 'gray90',
+               legend.title.color = 'gray90') +
+    tm_symbols(col='border_5', border.alpha = 0, title.col = 'Boundary Property',
+               shape = 19,
+               alpha = .95, size = .2, palette = c('gray50', 'royalblue')) ->
+    fair_map1
+  fair_map1
 
+  tmap_save(fair_map1,
+            filename = file.path(getwd(), 'plots', 'fairmap1.png'),
+            bg="transparent")
 
 
 
@@ -346,188 +413,3 @@ test_sf <- test_df %>%
 
 
 
-
-
-
-
-  # Aspatial
-   mod_lm <- stats::lm(log(sale_price) ~ log(sqft) + sqft_lot + year_built + grade +
-                      condition + stories + beds + baths + sale_month + as.factor(present_use) +
-                        wfnt + view_score,
-                    data = train_df)
-
-  # Spatial
-   mod_slm <- stats::lm(update(mod_lm, . ~ . + as.factor(zip_code)),
-                     data = train_df)
-
-
-  # Add the predictions to test data set
-   test_df <- test_df %>%
-      dplyr::mutate(pred_lm = predict(mod_lm, .),
-                    error_lm = log_price - pred_lm)
-
-### RF model ---------------------------------------------------------------------------------------
-
-  mod_rf <- ranger::ranger(log_price ~ sqft + sqft_lot + year_built + grade +
-                              condition + stories + beds + baths + sale_month +
-                              present_use + wfnt + view_score,
-                            data = train_df,  importance = 'impurity')
-   mod_srf <- ranger::ranger(log_price ~ sqft + sqft_lot + year_built + grade +
-                              condition + stories + beds + baths +
-                                present_use + wfnt + view_score + sale_month + latitude +
-                               longitude,
-                            data = train_df,  importance = 'impurity')
-
-
-   sim_df$pred = exp(b$predictions) - exp(a$predictions)
-
-
-
-   ####
-
-   trainr_df <- addRotatedCoordinates(train_df)
-   mod_srrf <- ranger::ranger(log_price ~ sqft + sqft_lot + year_built + grade +
-                                condition + stories + beds + baths +
-                                present_use + wfnt + view_score + sale_month + latitude +
-                                longitude + x_15 + x_30 + x_45 +
-                                 y_15 + y_30 + y_45,
-                             data = trainr_df,  importance = 'impurity')
-   idx <- 1
-   sim_df <- simxy_sf %>%
-      addRotatedCoordinates() %>%
-      dplyr::mutate(sqft = test_df$sqft[idx],
-                    sqft_lot = test_df$sqft_lot[idx],
-                    year_built = test_df$year_built[idx],
-                    grade = test_df$grade[idx],
-                    condition = test_df$condition[idx],
-                    stories = test_df$stories[idx],
-                    beds = test_df$beds[idx],
-                    baths = test_df$baths[idx],
-                    present_use = test_df$present_use[idx],
-                    wfnt = test_df$wfnt[idx],
-                    view_score = test_df$view_score[idx],
-                    sale_month = test_df$sale_month[idx])
-
-   sim2_df <- sim_df %>%
-      dplyr::mutate(sqft = sqft + 100)
-
-   a = predict(mod_srrf, as.data.frame(sim_df))
-   b = predict(mod_srrf, as.data.frame(sim2_df))
-   sim_df$pred = exp(b$predictions) - exp(a$predictions)
-   plot(sim_df[, c(1,27)])
-
-
-
-
-
-
-
-
-
-
-
- pred_lm <- predict(mod_lm, score_df %>% dplyr::mutate(sale_month = '2019-10'))
- pred_slm <- predict(mod_slm, score_df %>% dplyr::mutate(sale_month = '2019-10'))
- pred_rf <- predict(mod_rf, score_df %>% dplyr::mutate(sale_month = '2019-10'))
- pred_srf <- predict(mod_srf, score_df %>% dplyr::mutate(sale_month = '2019-10'))
-
- score_df$pred_lm = exp(pred_lm)
- score_df$pred_slm = exp(pred_slm)
- score_df$pred_rf = exp(pred_rf$predictions)
- score_df$pred_srf = exp(pred_srf$predictions)
-
- score_df$lm_error = log(score_df$pred_lm) - log(score_df$sale_price)
- score_df$slm_error = log(score_df$pred_slm) - log(score_df$sale_price)
- score_df$rf_error = log(score_df$pred_rf) - log(score_df$sale_price)
- score_df$srf_error = log(score_df$pred_srf) - log(score_df$sale_price)
-
- error_df <- score_df %>%
-   dplyr::select(sale_id, latitude, longitude, sale_price, lm_error, slm_error, rf_error, srf_error) %>%
-   tidyr::pivot_longer(., -c('sale_id', 'latitude', 'longitude', 'sale_price'),
-                       names_to = 'model', values_to = 'error')
-
- error_df %>%
-   dplyr::group_by(model) %>%
-   dplyr::summarize(mdape = median(abs(error), na.rm = TRUE),
-                    mdpe = median(error, na.rm=TRUE))
-
-
-
- error_sf <- error_df %>%
-   sf::st_as_sf(., coords = c('longitude', 'latitude'),
-                remove = FALSE)
-
-
-
-
-
-
-
- # Extraction Predictions
- rf_pred <- mod_rf$predictions
-
- ## Gather Partial Dependency Plots
-
- # Set up simulation data.  Here we take just 100 random sales from data
- sim_df <- hpiR::rfSimDf(rf_df = score_df,
-                         seed = 1,
-                         sim_count = 100)
-
- # Calculate Partial dependency (or how prediction changes if only that variable is changed)
- # For Year Built.  You can set range in the last parameter, here i'm using 1800 to 2019.
- yearbuilt_pdp <- pdp::partial(object = mod_rf,
-                               train = sim_df,
-                               pred.var = "year_built",
-                               pred.grid = data.frame(year_built = 1880:2019))
-
-
- ggplot(yearbuilt_pdp, aes(x = year_built, y = exp(yhat))) +
-   geom_line() +
-   ylab('Median Sale Price') +
-   xlab('\n Year Built') +
-   ggtitle('Partial Dependence Plot')
-
- yearbuilt_pdp <- pdp::partial(object = mod_rf,
-                               train = sim_df,
-                               pred.var = "sqft",
-                               pred.grid = data.frame(sqft = 800:3800))
-
-
- ggplot(yearbuilt_pdp, aes(x = sqft, y = exp(yhat))) +
-   geom_line() +
-   ylab('Median Sale Price') +
-   xlab('\n Year Built') +
-   ggtitle('Partial Dependence Plot')
-
-
-
-
- score_df <- assignBorder(score_df, 'zip_code', k = 4)
- score_df <- assignBorder(score_df, 'zip_code', k = 8, 'border_10')
- score_df$border_10 <- ifelse(score_df$border_5, FALSE, score_df$border_10)
-
- score_df %>% dplyr::group_by(border_5, border_10) %>%
-   dplyr::summarize(count = dplyr::n(),
-                    mape = median(abs(slm_error), na.rm=TRUE),
-                    m = median(abs(srf_error), na.rm=TRUE))
-
-
- sp_df <- sp::SpatialPointsDataFrame(
-   sp::SpatialPoints(cbind(score_df$longitude, score_df$latitude)),
-   score_df)
- nbl <- sp_df %>%
-   spdep::knearneigh(., k = 5, longlat = NULL, RANN=TRUE) %>%
-   spdep::knn2nb(.) %>%
-   spdep::nb2listw(.)
-
- #
- err <- grep('error', names(score_df))
- spac_ <- list()
-
- for(i in 1:length(err)){
-   x <- score_df[, err[i]]
-   spac_[[i]] <- spdep::moran.test(unlist(x), nbl)
- }
- names(spac_) <- names(score_df)[err]
-
- spac_

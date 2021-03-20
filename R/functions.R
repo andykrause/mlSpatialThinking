@@ -64,3 +64,31 @@ theme_vtc <- function(
           legend.box.background = element_rect(fill = "transparent"),
           plot.caption = element_text(color = "gray10", face = "italic", hjust = 0, size = 8))
 }
+
+theme_vtcdark <- function(
+  panel_grid = 'blue2',
+  text_color = 'gray90',
+  axis_color = 'gray80',
+  base_size = 11,
+  base_family = "",
+  base_line_size = base_size/22,
+  base_rect_size = base_size/22) {
+  theme_bw(base_size = base_size,
+           base_family = base_family,
+           base_line_size = base_line_size,
+           base_rect_size = base_rect_size) +
+    theme(axis.ticks = element_blank(),
+          legend.key = element_blank(),
+          panel.grid = element_line(color = panel_grid),
+          axis.text = element_text(color = axis_color),
+          text = element_text(color = text_color),
+          panel.border = element_blank(), strip.background = element_blank(),
+          legend.position = 'bottom',
+          panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank(),
+          panel.background = element_rect(fill = "transparent",colour = NA),
+          plot.background = element_rect(fill = "transparent",colour = NA),
+          legend.background = element_rect(fill = "transparent"), # get rid of legend bg
+          legend.box.background = element_rect(fill = "transparent"),
+          plot.caption = element_text(color = "gray80", face = "italic", hjust = 0, size = 8))
+}
