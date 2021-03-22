@@ -1,0 +1,27 @@
+{
+    "id": "8F281A51",
+    "path": "~/projects/_research/mlSpatialThinking/scripts/1_analysis.R",
+    "project_path": "scripts/1_analysis.R",
+    "type": "r_source",
+    "hash": "0",
+    "contents": "",
+    "dirty": false,
+    "created": 1616444487567.0,
+    "source_on_save": false,
+    "relative_order": 2,
+    "properties": {
+        "source_window_id": "",
+        "Source": "Source",
+        "cursorPosition": "432,0",
+        "scrollLine": "408",
+        "docOutlineVisible": "1"
+    },
+    "folds": "",
+    "lastKnownWriteTime": 1616450442,
+    "encoding": "UTF-8",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1616450442634,
+    "read_only": false,
+    "read_only_alternatives": []
+}

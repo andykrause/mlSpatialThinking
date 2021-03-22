@@ -1,3 +1,10 @@
+#***************************************************************************************************
+#*
+#*  Analytical Functions
+#*
+#***************************************************************************************************
+
+### Create rotated coordinates ---------------------------------------------------------------------
 
 addRotatedCoordinates <- function(data,
                                   lon_field = 'longitude',
@@ -17,11 +24,15 @@ addRotatedCoordinates <- function(data,
   data
 }
 
+### Base rotations ---------------------------------------------------------------------------------
+
 rotateCoords <- function(x, y, angle){
 
   coords <- cbind(x, y)
   spdep::Rotation(coords, angle * pi / 180) %>% as.data.frame()
 }
+
+### Assign border status ---------------------------------------------------------------------------
 
 assignBorder <- function(validate_df,
                          district_field,
@@ -47,6 +58,8 @@ assignBorder <- function(validate_df,
   validate_df
 }
 
+### Set plotting theme -----------------------------------------------------------------------------
+
 theme_vtc <- function(
   base_size = 11,
   base_family = "",
@@ -64,6 +77,8 @@ theme_vtc <- function(
           legend.box.background = element_rect(fill = "transparent"),
           plot.caption = element_text(color = "gray10", face = "italic", hjust = 0, size = 8))
 }
+
+### Set plotting theme (dark) ----------------------------------------------------------------------
 
 theme_vtcdark <- function(
   panel_grid = 'blue2',
@@ -92,3 +107,6 @@ theme_vtcdark <- function(
           legend.box.background = element_rect(fill = "transparent"),
           plot.caption = element_text(color = "gray80", face = "italic", hjust = 0, size = 8))
 }
+
+#***************************************************************************************************
+#***************************************************************************************************
